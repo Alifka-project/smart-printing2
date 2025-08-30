@@ -1,64 +1,45 @@
 import { NextResponse } from 'next/server';
-import { DatabaseService } from '@/lib/database-unified';
-
-// Use production database service if in production
-const getDatabaseService = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // In production, use the production database service
-    const { DatabaseService: ProductionDatabaseService } = require('@/lib/database-production');
-    return new ProductionDatabaseService();
-  }
-  // In development, use the unified database service
-  return new DatabaseService();
-};
+import { prisma } from '@/lib/database-production';
 
 export async function GET() {
   try {
-    console.log('Testing database connection...');
-    console.log('Environment variables:', {
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET',
-      DATABASE_URL_LENGTH: process.env.DATABASE_URL?.length || 0
-    });
+    console.log('🔍 Testing database connection...');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Database URL exists:', !!process.env.DATABASE_URL);
+    console.log('Database URL prefix:', process.env.DATABASE_URL?.substring(0, 30) + '...');
     
-    const dbService = getDatabaseService();
+    // Test basic connection
+    const result = await prisma.$queryRaw`SELECT 1 as test`;
+    console.log('✅ Database query successful:', result);
     
-    // Test database health
-    const health = await dbService.checkHealth();
-    console.log('Database health check:', health);
-    
-    // Test database info
-    const dbInfo = await dbService.getDatabaseInfo();
-    console.log('Database info:', dbInfo);
-    
-    // Test if we can query users (basic functionality test)
+    // Test a simple table query
     try {
-      const users = await dbService.getAllUsers();
-      console.log(`Successfully queried ${users.length} users`);
-    } catch (userError) {
-      console.error('Error querying users:', userError);
+      const userCount = await prisma.user.count();
+      console.log('✅ User table accessible, count:', userCount);
+    } catch (tableError) {
+      console.log('⚠️ User table error:', tableError);
     }
     
     return NextResponse.json({
-      status: 'success',
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET'
-      },
-      health,
-      dbInfo,
-      timestamp: new Date().toISOString()
+      status: 'connected',
+      message: 'Database connection successful',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      testQuery: result,
+      userCount: await prisma.user.count().catch(() => 'error')
     });
     
   } catch (error) {
-    console.error('Database test failed:', error);
-    return NextResponse.json(
-      { 
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    );
+    console.error('💥 Database connection failed:', error);
+    
+    return NextResponse.json({
+      status: 'disconnected',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      databaseUrlPrefix: process.env.DATABASE_URL?.substring(0, 30) + '...'
+    }, { status: 500 });
   }
 }
