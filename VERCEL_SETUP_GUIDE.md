@@ -33,7 +33,7 @@ NEXTAUTH_URL=https://your-app.vercel.app
 ```
 
 ### 3. Build Configuration
-- **Build Command**: `npm run vercel-build`
+- **Build Command**: `npm run build`
 - **Install Command**: `npm install`
 - **Output Directory**: `.next`
 
@@ -76,8 +76,8 @@ npm run dev
 # Build for production
 npm run build
 
-# Vercel-specific build
-npm run vercel-build
+# Production build
+npm run build
 
 # Generate Prisma client
 npm run db:generate
