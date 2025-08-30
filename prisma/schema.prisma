@@ -218,7 +218,7 @@ model QuoteOperational {
   plates    Int?
   units     Int?
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @default(now())
   Quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 }
 

@@ -298,7 +298,7 @@ export class DatabaseService {
       console.log('Creating quote with data:', JSON.stringify(quoteData, null, 2));
       
       // Extract nested data that needs to be created separately
-      const { papers, finishing, amounts, ...mainQuoteData } = quoteData;
+      const { papers, finishing, amounts, operational, ...mainQuoteData } = quoteData;
       
       // Create the main quote first
       const quote = await this.prisma.quote.create({
@@ -314,7 +314,18 @@ export class DatabaseService {
       // Create papers if provided
       if (papers && Array.isArray(papers) && papers.length > 0) {
         console.log('Creating papers for quote:', papers.length);
-        for (const paper of papers) {
+        
+        // Handle both direct papers data and nested create syntax
+        let papersData;
+        if (papers[0] && papers[0].create) {
+          // Handle nested create syntax from frontend
+          papersData = papers[0].create;
+        } else {
+          // Handle direct papers data
+          papersData = papers;
+        }
+        
+        for (const paper of papersData) {
           await this.prisma.paper.create({
             data: {
               ...paper,
@@ -326,9 +337,20 @@ export class DatabaseService {
       }
       
       // Create finishing if provided
-      if (finishing && Array.isArray(finishing) && papers.length > 0) {
+      if (finishing && Array.isArray(finishing) && finishing.length > 0) {
         console.log('Creating finishing for quote:', finishing.length);
-        for (const finish of finishing) {
+        
+        // Handle both direct finishing data and nested create syntax
+        let finishingData;
+        if (finishing[0] && finishing[0].create) {
+          // Handle nested create syntax from frontend
+          finishingData = finishing[0].create;
+        } else {
+          // Handle direct finishing data
+          finishingData = finishing;
+        }
+        
+        for (const finish of finishingData) {
           await this.prisma.finishing.create({
             data: {
               ...finish,
@@ -342,13 +364,50 @@ export class DatabaseService {
       // Create amounts if provided
       if (amounts) {
         console.log('Creating amounts for quote');
+        
+        // Handle both direct amounts data and nested create syntax
+        let amountsData;
+        if (amounts.create) {
+          // Handle nested create syntax from frontend
+          amountsData = amounts.create;
+        } else {
+          // Handle direct amounts data
+          amountsData = amounts;
+        }
+        
         await this.prisma.quoteAmount.create({
           data: {
-            ...amounts,
+            ...amountsData,
             quoteId: quote.id
           }
         });
         console.log('Amounts created successfully');
+      }
+      
+      // Create operational data if provided
+      if (operational) {
+        console.log('Creating operational data for quote');
+        
+        // Handle both direct operational data and nested create syntax
+        let operationalData;
+        if (operational.create) {
+          // Handle nested create syntax from frontend
+          operationalData = operational.create;
+        } else {
+          // Handle direct operational data
+          operationalData = operational;
+        }
+        
+        await this.prisma.quoteOperational.create({
+          data: {
+            id: quote.id, // Use the quote ID as the operational ID (1:1 relationship)
+            plates: operationalData.plates || 0,
+            units: operationalData.units || 0,
+            quoteId: quote.id,
+            updatedAt: new Date()
+          }
+        });
+        console.log('Operational data created successfully');
       }
       
       // Fetch the complete quote with all relations
